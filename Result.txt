@@ -1,0 +1,69 @@
+----------------------------------------------
+Full Statistic:
+Comment Lines    = 8
+Blank Lines      = 103
+Code Lines       = 545
+Physical Lines   = 663
+Proccessed Files = 10
+----------------------------------------------
+
+File 'C:\Users\Demien\source\repos\Task03\Task 03 Threads\CodeAnalyzer.cpp':
+Comment Lines    = 0
+Blank Lines      = 1
+Code Lines       = 16
+Physical Lines   = 19
+
+File 'C:\Users\Demien\source\repos\Task03\Task 03 Threads\CodeAnalyzer.h':
+Comment Lines    = 0
+Blank Lines      = 13
+Code Lines       = 44
+Physical Lines   = 58
+
+File 'C:\Users\Demien\source\repos\Task03\Task 03 Threads\FileReader.cpp':
+Comment Lines    = 0
+Blank Lines      = 1
+Code Lines       = 33
+Physical Lines   = 40
+
+File 'C:\Users\Demien\source\repos\Task03\Task 03 Threads\FileReader.h':
+Comment Lines    = 0
+Blank Lines      = 1
+Code Lines       = 26
+Physical Lines   = 29
+
+File 'C:\Users\Demien\source\repos\Task03\Task 03 Threads\FilesHolder.cpp':
+Comment Lines    = 0
+Blank Lines      = 16
+Code Lines       = 49
+Physical Lines   = 63
+
+File 'C:\Users\Demien\source\repos\Task03\Task 03 Threads\FilesHolder.h':
+Comment Lines    = 0
+Blank Lines      = 1
+Code Lines       = 20
+Physical Lines   = 23
+
+File 'C:\Users\Demien\source\repos\Task03\Task 03 Threads\main.cpp':
+Comment Lines    = 0
+Blank Lines      = 1
+Code Lines       = 17
+Physical Lines   = 22
+
+File 'C:\Users\Demien\source\repos\Task03\Task 03 Threads\ProjectAnalyzer.cpp':
+Comment Lines    = 8
+Blank Lines      = 34
+Code Lines       = 183
+Physical Lines   = 218
+
+File 'C:\Users\Demien\source\repos\Task03\Task 03 Threads\ProjectAnalyzer.h':
+Comment Lines    = 0
+Blank Lines      = 1
+Code Lines       = 41
+Physical Lines   = 48
+
+File 'C:\Users\Demien\source\repos\Task03\Task 03 Threads\Wexception.h':
+Comment Lines    = 0
+Blank Lines      = 34
+Code Lines       = 116
+Physical Lines   = 143
+
