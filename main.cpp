@@ -33,7 +33,7 @@ int main()
 	}
 	catch (const std::exception& ex)
 	{
-		std::wcerr << ex.what() << std::endl;
+		std::cerr << ex.what() << std::endl;
 	}
 
 	return 0;
