@@ -43,6 +43,7 @@ private:
 	int m_processed_files;
 
 	void ProcessFile(const std::wstring& file_path);
+	void ProcessFilesByRange(size_t first, size_t last);
 
 	friend std::wostream& operator<<(std::wostream& out, const ProjectAnalyzer& analyzer);
 };
