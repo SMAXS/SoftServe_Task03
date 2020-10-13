@@ -29,8 +29,14 @@ void ProjectAnalyzer::AnalyzeProject()
 
 	if (!m_threads.empty())
 	{
-		for (const std::wstring& file_path : m_files_holder.get_special_files())
-			m_threads.push_back(std::thread{ &ProjectAnalyzer::ProcessFile, this, std::cref(file_path) });
+		unsigned files_per_thread = m_files_holder.get_special_files().size() / m_threads.size() + 1;
+		size_t fileIndex = 0;
+
+		for (size_t i = 0; i < m_threads.size(); i++)
+		{
+			m_threads[i] = std::thread{ &ProjectAnalyzer::ProcessFilesByRange, this, fileIndex, fileIndex + (files_per_thread - 1) };
+			fileIndex += files_per_thread;
+		}
 
 		for (std::thread& thread : m_threads)
 			if (thread.joinable())
@@ -117,6 +123,12 @@ void ProjectAnalyzer::ProcessFile(const std::wstring& file_path)
 	m_full_statistic.physical_lines += codeAnalyzer.get_physical_lines();
 
 	m_processed_files++;
+}
+
+void ProjectAnalyzer::ProcessFilesByRange(size_t first, size_t last)
+{
+	for (size_t i = first; i <= last && i < m_files_holder.get_special_files().size(); i++)
+		ProcessFile(m_files_holder.get_special_files()[i]);
 }
 
 std::wostream& operator<<(std::wostream& out, const ProjectAnalyzer& analyzer)
