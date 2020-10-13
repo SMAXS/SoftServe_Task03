@@ -35,15 +35,15 @@ public:
 	void set_extensions_for_search(const std::initializer_list<std::wstring>& extensions_for_search);
 
 private:	
+	void ProcessFile(const std::wstring& file_path);
+	void ProcessFilesByRange(size_t first, size_t last);
+
+	friend std::wostream& operator<<(std::wostream& out, const ProjectAnalyzer& analyzer);
+	
 	std::vector<std::thread> m_threads;
 	std::wstring m_project_path;
 	FilesHolder m_files_holder;
 	std::vector<FileStatistic> m_files_statistics;
 	FileStatistic m_full_statistic;
 	int m_processed_files;
-
-	void ProcessFile(const std::wstring& file_path);
-	void ProcessFilesByRange(size_t first, size_t last);
-
-	friend std::wostream& operator<<(std::wostream& out, const ProjectAnalyzer& analyzer);
 };
