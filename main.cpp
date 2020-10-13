@@ -29,11 +29,11 @@ int main()
 	}
 	catch (const Wexception& wex)
 	{
-		std::cerr << wex.what() << std::endl;
+		std::wcerr << wex.what() << std::endl;
 	}
 	catch (const std::exception& ex)
 	{
-		std::cerr << ex.what() << std::endl;
+		std::wcerr << ex.what() << std::endl;
 	}
 
 	return 0;
