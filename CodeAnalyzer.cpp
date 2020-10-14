@@ -1,218 +1,155 @@
-#include "CodeAnalyzer.h"
+#include "ProjectAnalyzer.h"
 
-#include <sstream>
-#include <cwctype>
+#include "Wexception.h"
 
-CodeAnalyzer::CodeAnalyzer()
-	: m_text()
-	, m_blank_lines(0)
-	, m_comment_lines(0)
-	, m_code_lines(0)
-	, m_physical_lines(0)
+ProjectAnalyzer::ProjectAnalyzer()
+	: m_project_path()
+	, m_files_holder()
+	, m_full_statistic()
+	, m_processed_files(0)
+	, m_threads(std::thread::hardware_concurrency())
 {}
 
-CodeAnalyzer::CodeAnalyzer(const std::wstring& text)
-	: m_text(text)
-	, m_blank_lines(0)
-	, m_comment_lines(0)
-	, m_code_lines(0)
-	, m_physical_lines(0)
+ProjectAnalyzer::ProjectAnalyzer(const std::wstring& project_path, const std::initializer_list<std::wstring>& extensions_for_search)
+	: m_project_path(project_path)
+	, m_files_holder(project_path, extensions_for_search)
+	, m_full_statistic()
+	, m_processed_files(0)
+	, m_threads(std::thread::hardware_concurrency())
 {}
 
-void CodeAnalyzer::StartFullAnalysis()
+void ProjectAnalyzer::AnalyzeProject()
 {
-	CountPhysicalLines();
-	CountCommentLines();
-	CountBlankLines();
-	CountCodeLines();
-}
+	if (!std::filesystem::exists(m_project_path))
+		throw Wexception((L"Folder '" + m_project_path + L"' doesn't exist").c_str());
 
-void CodeAnalyzer::CountBlankLines()
-{
-	// empty line definition:
-	// empty line is a line with at least one whitespace character and it has
-	// only whitespace characters.
+	ResetAmounts();
 
-	std::wstring line;
+	m_files_holder.StartSearching();
 
-	int ch = EOF;
-	for (size_t i = 0; i < m_text.size(); i++)
+	if (!m_threads.empty())
 	{
-		// read next line:
-		ch = m_text[i];
-		while (ch != '\n' && ch != EOF && i < m_text.size())
+		unsigned files_per_thread = m_files_holder.get_special_files().size() / m_threads.size() + 1;
+		size_t fileIndex = 0;
+
+		for (size_t i = 0; i < m_threads.size(); i++)
 		{
-			line.push_back(ch);
-			ch = m_text[i++];
+			m_threads[i] = std::thread{ &ProjectAnalyzer::ProcessFilesByRange, this, fileIndex, fileIndex + (files_per_thread - 1) };
+			fileIndex += files_per_thread;
 		}
 
-		// check if the is empty:
-		bool is_empty_line = true;
-		for (size_t j = 0; j < line.size(); j++)
-		{
-			if (!std::iswspace(line[j]))
-			{
-				is_empty_line = false;
-				break;
-			}
-		}
-
-		if (is_empty_line)
-			m_blank_lines++;
-
-		line.clear();
+		for (std::thread& thread : m_threads)
+			if (thread.joinable())
+				thread.join();
+	}
+	else
+	{
+		for (const std::wstring& file_path : m_files_holder.get_special_files())
+			ProcessFile(file_path);
 	}
 }
 
-void CodeAnalyzer::CountCommentLines()
+void ProjectAnalyzer::ResetAmounts()
 {
-	bool isRowCommentStarted = false;
-	bool isBlockCommentStarted = false;
-	bool isStringLiteralStarted = false;
-	bool isCharLiteralStarted = false;
-	int previousCharacter = EOF;
-
-	for (size_t i = 0; i < m_text.size(); i++)
-	{
-		if (!isRowCommentStarted && !isBlockCommentStarted && m_text[i] == '\"')
-		{
-			isStringLiteralStarted = (isStringLiteralStarted ? false : true);
-		}
-		else if (previousCharacter == '/' && m_text[i] == '/' && !isRowCommentStarted && !isBlockCommentStarted && !isStringLiteralStarted && !isCharLiteralStarted)
-		{
-			isRowCommentStarted = true;
-			m_comment_lines++;
-		}
-		else if (!isRowCommentStarted && !isBlockCommentStarted && m_text[i] == '\'')
-		{
-			isCharLiteralStarted = (isCharLiteralStarted ? false : true);
-		}
-		else if (previousCharacter == '/' && m_text[i] == '*' && !isRowCommentStarted && !isBlockCommentStarted && !isStringLiteralStarted && !isCharLiteralStarted)
-		{
-			isBlockCommentStarted = true;
-			m_comment_lines++;
-		}
-		else if (isRowCommentStarted && m_text[i] == '\n')
-		{
-			isRowCommentStarted = false;
-		}
-		else if (isBlockCommentStarted && previousCharacter == '\n')
-		{
-			m_comment_lines++;
-		}
-		else if (isBlockCommentStarted && previousCharacter == '*' && m_text[i] == '/')
-		{
-			isBlockCommentStarted = false;
-		}
-
-		previousCharacter = m_text[i];
-	}
+	m_full_statistic.blank_lines = 0;
+	m_full_statistic.comment_lines = 0;
+	m_full_statistic.code_lines = 0;
+	m_full_statistic.physical_lines = 0;
+	m_processed_files = 0;
 }
 
-void CodeAnalyzer::CountCodeLines()
+int ProjectAnalyzer::get_processed_files() const
 {
-	bool isRowCommentStarted = false;
-	bool isBlockCommentStarted = false;
-	bool isStringLiteralStarted = false;
-	bool isCharLiteralStarted = false;
-	bool isCodeLineStarted = false;
-	int previousCharacter = EOF;
-
-	for (size_t i = 0; i < m_text.size(); i++)
-	{
-		if (!isRowCommentStarted && !isBlockCommentStarted && m_text[i] == '\"')
-		{
-			isStringLiteralStarted = (isStringLiteralStarted ? false : true);
-		}
-		else if (previousCharacter == '/' && m_text[i] == '/' && !isRowCommentStarted && !isBlockCommentStarted && !isStringLiteralStarted && !isCharLiteralStarted)
-		{
-			isRowCommentStarted = true;
-		}
-		else if (!isRowCommentStarted && !isBlockCommentStarted && m_text[i] == '\'')
-		{
-			isCharLiteralStarted = (isCharLiteralStarted ? false : true);
-		}
-		else if (previousCharacter == '/' && m_text[i] == '*' && !isRowCommentStarted && !isBlockCommentStarted && !isStringLiteralStarted && !isCharLiteralStarted)
-		{
-			isBlockCommentStarted = true;
-		}
-		else if (isRowCommentStarted && m_text[i] == '\n')
-		{
-			isRowCommentStarted = false;
-		}
-		else if (isBlockCommentStarted && previousCharacter == '*' && m_text[i] == '/')
-		{
-			isBlockCommentStarted = false;
-		}
-		else if (!isBlockCommentStarted && !isRowCommentStarted && !isCodeLineStarted)
-		{
-			isCodeLineStarted = true;
-			m_code_lines++;
-		}
-		else if (!isBlockCommentStarted && !isRowCommentStarted && m_text[i] == '\n')
-		{
-			isCodeLineStarted = false;
-		}
-
-		previousCharacter = m_text[i];
-	}
+	return m_processed_files;
 }
 
-void CodeAnalyzer::CountPhysicalLines()
+int ProjectAnalyzer::get_blank_lines() const
 {
-	int previousCharacter = EOF;
+	return m_full_statistic.blank_lines;
+}
 
-	for (size_t i = 0; i < m_text.size(); i++)
+int ProjectAnalyzer::get_comment_lines() const
+{
+	return m_full_statistic.comment_lines;
+}
+
+int ProjectAnalyzer::get_code_lines() const
+{
+	return m_full_statistic.code_lines;
+}
+
+int ProjectAnalyzer::get_physical_lines() const
+{
+	return m_full_statistic.physical_lines;
+}
+
+const std::wstring& ProjectAnalyzer::get_project_path() const
+{
+	return m_project_path;
+}
+
+void ProjectAnalyzer::set_project_path(const std::wstring& project_path)
+{
+	ResetAmounts();
+
+	m_project_path = project_path;
+
+	m_files_holder.set_root_directory(project_path);
+}
+
+void ProjectAnalyzer::set_extensions_for_search(const std::initializer_list<std::wstring>& extensions_for_search)
+{
+	m_files_holder.set_extensions_for_search(extensions_for_search);
+}
+
+void ProjectAnalyzer::ProcessFile(const std::wstring& file_path)
+{
+	FileReader fileReader{ file_path };
+	fileReader.StartReading();
+
+	CodeAnalyzer codeAnalyzer{ fileReader.get_read_information() };
+	codeAnalyzer.StartFullAnalysis();
+
+	m_files_statistics.push_back(FileStatistic{
+		codeAnalyzer.get_blank_lines(),
+		codeAnalyzer.get_comment_lines(),
+		codeAnalyzer.get_code_lines(),
+		codeAnalyzer.get_physical_lines()
+		});
+
+	m_full_statistic.blank_lines += codeAnalyzer.get_blank_lines();
+	m_full_statistic.comment_lines += codeAnalyzer.get_comment_lines();
+	m_full_statistic.code_lines += codeAnalyzer.get_code_lines();
+	m_full_statistic.physical_lines += codeAnalyzer.get_physical_lines();
+
+	m_processed_files++;
+}
+
+void ProjectAnalyzer::ProcessFilesByRange(size_t first, size_t last)
+{
+	for (size_t i = first; i <= last && i < m_files_holder.get_special_files().size(); i++)
+		ProcessFile(m_files_holder.get_special_files()[i]);
+}
+
+std::wostream& operator<<(std::wostream& out, const ProjectAnalyzer& analyzer)
+{
+	out << "----------------------------------------------\n";
+	out << L"Full Statistic:\n";
+	out << L"Comment Lines    = " << analyzer.get_comment_lines() << std::endl;
+	out << L"Blank Lines      = " << analyzer.get_blank_lines() << std::endl;
+	out << L"Code Lines       = " << analyzer.get_code_lines() << std::endl;
+	out << L"Physical Lines   = " << analyzer.get_physical_lines() << std::endl;
+	out << L"Proccessed Files = " << analyzer.get_processed_files() << std::endl;
+	out << "----------------------------------------------\n\n";
+
+	for (size_t i = 0; i < analyzer.m_files_holder.get_special_files().size(); i++)
 	{
-		if (m_text[i] == '\n')
-			m_physical_lines++;
-
-		previousCharacter = m_text[i];
+		out << L"File '" << analyzer.m_files_holder.get_special_files()[i] << "':\n";
+		out << L"Comment Lines    = " << analyzer.m_files_statistics[i].comment_lines << std::endl;
+		out << L"Blank Lines      = " << analyzer.m_files_statistics[i].blank_lines << std::endl;
+		out << L"Code Lines       = " << analyzer.m_files_statistics[i].code_lines << std::endl;
+		out << L"Physical Lines   = " << analyzer.m_files_statistics[i].physical_lines << "\n\n";
 	}
 
-	// After last line of code file might not have new-line character. In that case
-	// algorithm above doesn't calculate the last line of code. That's why we need another
-	// variable 'prev' to keep previous character and check it if that's our case.
-	if (previousCharacter != '\n')
-		m_physical_lines++;
-}
-
-void CodeAnalyzer::Reset()
-{
-	m_blank_lines = 0;
-	m_comment_lines = 0;
-	m_code_lines = 0;
-	m_physical_lines = 0;
-}
-
-void CodeAnalyzer::set_text(const std::wstring& text)
-{
-	m_text = text;
-
-	Reset();
-}
-
-int CodeAnalyzer::get_blank_lines() const
-{
-	return m_blank_lines;
-}
-
-int CodeAnalyzer::get_comment_lines() const
-{
-	return m_comment_lines;
-}
-
-int CodeAnalyzer::get_code_lines() const
-{
-	return m_code_lines;
-}
-
-int CodeAnalyzer::get_physical_lines() const
-{
-	return m_physical_lines;
-}
-
-const std::wstring& CodeAnalyzer::get_text() const
-{
-	return m_text;
+	return out;
 }
